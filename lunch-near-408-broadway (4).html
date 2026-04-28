@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lunch near 408 Broadway</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..900,0..100&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" integrity="sha512-h9FcoyWjHcOcmEVkxOfTLnmZFWIH0iZhZT1H2TbOq55xssQGEJHEaIm+PgoUaZbRvQTNTluNOEfb1ZRy6D3BOw==" crossorigin="anonymous"/>
+<style>
+  :root {
+    --paper: #f4ede0;
+    --paper-deep: #ebe3d2;
+    --ink: #1a1a17;
+    --ink-soft: #4a4641;
+    --ink-faint: #8a8478;
+    --rule: #d8cfba;
+    --accent: #b8442a;
+    --accent-deep: #8a3320;
+    --green: #5a6a3a;
+    --gold: #b8853a;
+    --plum: #6a3a4a;
+    --blue: #3a5a7a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 400;
+    background: var(--paper);
+    background-image:
+      radial-gradient(circle at 20% 10%, rgba(184, 68, 42, 0.04), transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(58, 90, 122, 0.04), transparent 50%);
+    color: var(--ink);
+    line-height: 1.5;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+  .grain {
+    position: fixed; inset: 0; pointer-events: none; z-index: 100; opacity: 0.4;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3CfeColorMatrix values='0 0 0 0 0.1 0 0 0 0 0.08 0 0 0 0 0.05 0 0 0 0.5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.3'/%3E%3C/svg%3E");
+    mix-blend-mode: multiply;
+  }
+  .container { max-width: 1280px; margin: 0 auto; padding: 0 32px; }
+  header { padding: 60px 0 28px; border-bottom: 1px solid var(--rule); }
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 18px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .eyebrow::before, .eyebrow::after { content: ''; height: 1px; background: var(--accent); flex: 1; opacity: 0.4; }
+  h1 {
+    font-family: 'Fraunces', serif; font-weight: 300;
+    font-size: clamp(48px, 7vw, 96px); line-height: 0.95;
+    letter-spacing: -0.03em;
+    font-variation-settings: "SOFT" 80, "opsz" 144;
+    margin-bottom: 12px;
+  }
+  h1 em { font-style: italic; font-weight: 400; color: var(--accent); font-variation-settings: "SOFT" 100, "opsz" 144; }
+  .subtitle {
+    font-family: 'JetBrains Mono', monospace; font-size: 13px;
+    color: var(--ink-soft); letter-spacing: 0.02em;
+    max-width: 600px; margin-top: 18px;
+  }
+  .meta {
+    display: flex; gap: 28px; margin-top: 24px; flex-wrap: wrap;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-faint);
+  }
+  .meta span strong { color: var(--ink); font-weight: 500; }
+
+  .view-tabs { display: flex; margin-top: 32px; border-bottom: 1px solid var(--rule); }
+  .view-tab {
+    padding: 14px 24px 14px 0; margin-right: 32px;
+    font-family: 'Fraunces', serif; font-size: 18px;
+    background: none; border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer; color: var(--ink-faint);
+    transition: color 0.2s, border-color 0.2s;
+    margin-bottom: -1px;
+  }
+  .view-tab:hover { color: var(--ink-soft); }
+  .view-tab.active { color: var(--ink); border-bottom-color: var(--accent); font-style: italic; }
+  .view-tab .tab-count {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    letter-spacing: 0.1em; color: var(--ink-faint);
+    margin-left: 6px; vertical-align: 2px;
+  }
+
+  .filters { padding: 24px 0; background: var(--paper); border-bottom: 1px solid var(--rule); }
+  .filter-grid {
+    display: grid;
+    grid-template-columns: minmax(240px, 1fr) auto auto auto auto;
+    gap: 16px; align-items: end;
+  }
+  .search { position: relative; }
+  .search input {
+    width: 100%; padding: 12px 16px 12px 40px;
+    font-family: 'Fraunces', serif; font-size: 16px;
+    background: transparent; border: 1px solid var(--rule);
+    border-radius: 0; color: var(--ink); transition: border-color 0.2s;
+  }
+  .search input:focus { outline: none; border-color: var(--ink); }
+  .search input::placeholder { color: var(--ink-faint); font-style: italic; }
+  .search-icon {
+    position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+    width: 16px; height: 16px; color: var(--ink-faint);
+  }
+  .filter-group { display: flex; border: 1px solid var(--rule); }
+  .filter-group button {
+    padding: 11px 14px;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    background: transparent; border: none;
+    border-right: 1px solid var(--rule);
+    cursor: pointer; color: var(--ink-soft);
+    transition: all 0.15s; white-space: nowrap;
+  }
+  .filter-group button:last-child { border-right: none; }
+  .filter-group button:hover { color: var(--ink); background: var(--paper-deep); }
+  .filter-group button.active { background: var(--ink); color: var(--paper); }
+  .filter-label {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--ink-faint); margin-bottom: 6px; display: block;
+  }
+
+  .categories { padding: 20px 0 8px; border-bottom: 1px solid var(--rule); }
+  .categories-label {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--ink-faint); margin-bottom: 12px; display: block;
+  }
+  .category-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    letter-spacing: 0.06em; padding: 6px 12px;
+    background: transparent; border: 1px solid var(--rule);
+    color: var(--ink-soft); cursor: pointer;
+    transition: all 0.15s; white-space: nowrap; text-transform: uppercase;
+  }
+  .chip:hover { border-color: var(--ink); color: var(--ink); }
+  .chip.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .chip .chip-count { color: var(--ink-faint); margin-left: 4px; font-size: 9px; }
+  .chip.active .chip-count { color: rgba(244, 237, 224, 0.6); }
+
+  .results-bar {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 32px 0 20px;
+    font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink-soft);
+  }
+  .results-bar .count {
+    font-family: 'Fraunces', serif; font-size: 32px; font-weight: 300;
+    color: var(--ink); font-style: italic;
+  }
+  .clear-btn {
+    background: none; border: none;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--accent); cursor: pointer;
+    padding: 4px 0; border-bottom: 1px solid var(--accent);
+  }
+  .clear-btn:hover { color: var(--accent-deep); border-color: var(--accent-deep); }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    border-top: 1px solid var(--rule);
+    border-left: 1px solid var(--rule);
+  }
+  .card {
+    border-right: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    padding: 24px 24px 22px;
+    background: var(--paper);
+    position: relative; transition: background 0.2s;
+    display: flex; flex-direction: column; min-height: 200px;
+    cursor: pointer; text-decoration: none; color: inherit;
+  }
+  .card:hover { background: var(--paper-deep); }
+  .card:hover h3 { color: var(--accent); }
+  .card-arrow {
+    position: absolute; top: 24px; right: 24px;
+    opacity: 0; transition: opacity 0.2s, transform 0.2s;
+    color: var(--accent);
+    font-family: 'JetBrains Mono', monospace; font-size: 14px;
+  }
+  .card:hover .card-arrow { opacity: 1; transform: translateX(2px); }
+  .card-num {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    letter-spacing: 0.15em; color: var(--ink-faint); margin-bottom: 10px;
+  }
+  .card h3 {
+    font-family: 'Fraunces', serif; font-weight: 400;
+    font-size: 22px; line-height: 1.15; letter-spacing: -0.01em;
+    margin-bottom: 8px; color: var(--ink); transition: color 0.2s;
+  }
+  .card .cuisine {
+    font-family: 'Fraunces', serif; font-style: italic;
+    font-size: 14px; color: var(--ink-soft); margin-bottom: 16px;
+  }
+  .card-tags {
+    display: flex; gap: 6px; flex-wrap: wrap;
+    margin-top: auto; padding-top: 14px;
+    border-top: 1px dashed var(--rule);
+  }
+  .tag {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 4px 8px; background: transparent;
+    border: 1px solid var(--rule); color: var(--ink-soft); white-space: nowrap;
+  }
+  .tag-rating { border-color: var(--gold); color: var(--gold); font-weight: 500; }
+  .tag-price-1 { border-color: var(--green); color: var(--green); }
+  .tag-price-2 { border-color: var(--gold); color: var(--gold); }
+  .tag-price-3 { border-color: var(--accent); color: var(--accent); }
+  .tag-hood-chinatown { border-color: var(--plum); color: var(--plum); }
+  .tag-hood-soho { border-color: var(--green); color: var(--green); }
+  .tag-hood-tribeca { border-color: var(--blue); color: var(--blue); }
+  .tag-hood-nolita { border-color: var(--accent); color: var(--accent); }
+  .tag-type-quick { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .tag-type-fastfood { background: var(--accent); color: var(--paper); border-color: var(--accent); }
+  .empty {
+    grid-column: 1 / -1; padding: 80px 24px; text-align: center;
+    border-right: 1px solid var(--rule); border-bottom: 1px solid var(--rule);
+  }
+  .empty p:first-child {
+    font-family: 'Fraunces', serif; font-style: italic;
+    font-size: 28px; color: var(--ink-soft); margin-bottom: 8px;
+  }
+  .empty p:last-child {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-faint);
+  }
+
+  .view { display: none; }
+  .view.active { display: block; }
+  #map {
+    height: 70vh; min-height: 540px; width: 100%;
+    border: 1px solid var(--rule); background: var(--paper-deep);
+    margin-top: 24px; z-index: 1;
+  }
+  .map-legend {
+    margin-top: 16px; padding: 16px 20px;
+    border: 1px solid var(--rule); background: var(--paper);
+    display: flex; flex-wrap: wrap; gap: 24px;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-soft);
+  }
+  .legend-item { display: flex; align-items: center; gap: 8px; }
+  .legend-dot {
+    width: 14px; height: 14px; border-radius: 50%;
+    border: 2px solid var(--paper);
+    box-shadow: 0 0 0 1px currentColor;
+  }
+  .legend-dot.green { background: var(--green); color: var(--green); }
+  .legend-dot.gold { background: var(--gold); color: var(--gold); }
+  .legend-dot.accent { background: var(--accent); color: var(--accent); }
+  .legend-dot.ink { background: var(--ink); color: var(--ink); border-radius: 0; }
+
+  .custom-marker {
+    display: flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; border-radius: 50%;
+    border: 2px solid var(--paper);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; font-weight: 500;
+    color: var(--paper); cursor: pointer;
+    transition: transform 0.15s;
+  }
+  .custom-marker:hover { transform: scale(1.15); z-index: 1000; }
+  .marker-1 { background: var(--green); }
+  .marker-2 { background: var(--gold); }
+  .marker-3 { background: var(--accent); }
+  .marker-home {
+    background: var(--ink); width: 40px; height: 40px;
+    font-size: 13px; border-radius: 50%; border: 3px solid var(--paper);
+  }
+  .leaflet-popup-content-wrapper {
+    border-radius: 0; background: var(--paper);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  }
+  .leaflet-popup-content { margin: 16px 18px; font-family: 'Fraunces', serif; }
+  .leaflet-popup-content h4 {
+    font-family: 'Fraunces', serif; font-weight: 400;
+    font-size: 17px; line-height: 1.2; margin-bottom: 4px; color: var(--ink);
+  }
+  .leaflet-popup-content .popup-cuisine {
+    font-style: italic; font-size: 13px; color: var(--ink-soft); margin-bottom: 10px;
+  }
+  .leaflet-popup-content .popup-meta {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    color: var(--ink-soft); margin-bottom: 10px; letter-spacing: 0.05em;
+  }
+  .leaflet-popup-content a {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--accent); text-decoration: none;
+    border-bottom: 1px solid var(--accent); padding-bottom: 1px;
+  }
+  .leaflet-popup-content a:hover { color: var(--accent-deep); border-color: var(--accent-deep); }
+  .leaflet-popup-tip { background: var(--paper); }
+
+  footer {
+    padding: 48px 0 60px; margin-top: 32px;
+    border-top: 1px solid var(--rule);
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    letter-spacing: 0.08em; color: var(--ink-faint);
+    display: flex; justify-content: space-between;
+    flex-wrap: wrap; gap: 16px;
+  }
+  @media (max-width: 800px) {
+    .container { padding: 0 20px; }
+    header { padding: 36px 0 20px; }
+    .filter-grid { grid-template-columns: 1fr; gap: 12px; }
+    .filter-group { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .filter-group button { flex-shrink: 0; }
+    .grid { grid-template-columns: 1fr; }
+    h1 { font-size: 52px; }
+    #map { height: 60vh; min-height: 420px; }
+    .view-tab { padding: 12px 16px 12px 0; margin-right: 20px; font-size: 16px; }
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .card { animation: fadeUp 0.3s ease-out backwards; }
+</style>
+</head>
+<body>
+<div class="grain"></div>
+
+<div class="container">
+  <header>
+    <div class="eyebrow">Welcome to the neighborhood · 408 Broadway</div>
+    <h1>The Lunch <em>Atlas</em></h1>
+    <p class="subtitle">A working guide to 80+ places to eat within a 15-minute walk of the office. Filter by cuisine, mood, or price. Tap any card or pin to view it on Google Maps.</p>
+    <div class="meta">
+      <span><strong>83</strong> spots</span>
+      <span><strong>4</strong> neighborhoods</span>
+      <span>Walk radius <strong>~0.75 mi</strong></span>
+      <span>Compiled <strong>2026</strong></span>
+    </div>
+    <div class="view-tabs" id="view-tabs">
+      <button class="view-tab active" data-view="list">List view <span class="tab-count" id="list-count">83</span></button>
+      <button class="view-tab" data-view="map">Map view</button>
+    </div>
+  </header>
+
+  <div class="filters">
+    <div class="filter-grid">
+      <div class="search">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input type="text" id="search" placeholder="Search burgers, ramen, dumplings…" autocomplete="off">
+      </div>
+      <div>
+        <span class="filter-label">Type</span>
+        <div class="filter-group" data-filter="type">
+          <button data-value="all" class="active">All</button>
+          <button data-value="restaurant">Sit-down</button>
+          <button data-value="quick">Bowls</button>
+          <button data-value="fastfood">Fast food</button>
+        </div>
+      </div>
+      <div>
+        <span class="filter-label">Price</span>
+        <div class="filter-group" data-filter="price">
+          <button data-value="all" class="active">All</button>
+          <button data-value="1">$</button>
+          <button data-value="2">$$</button>
+          <button data-value="3">$$$</button>
+        </div>
+      </div>
+      <div>
+        <span class="filter-label">Neighborhood</span>
+        <div class="filter-group" data-filter="hood">
+          <button data-value="all" class="active">All</button>
+          <button data-value="chinatown">Chinatown</button>
+          <button data-value="nolita">Nolita</button>
+          <button data-value="soho">SoHo</button>
+          <button data-value="tribeca">Tribeca</button>
+        </div>
+      </div>
+      <div>
+        <span class="filter-label">Sort</span>
+        <div class="filter-group" data-filter="sort">
+          <button data-value="rating" class="active">Top rated</button>
+          <button data-value="num">By number</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="categories">
+    <span class="categories-label">Filter by cuisine</span>
+    <div class="category-chips" id="category-chips"></div>
+  </div>
+
+  <div class="results-bar">
+    <div><span class="count" id="count">83</span> &nbsp;places match your filters</div>
+    <button class="clear-btn" id="clear">Reset filters</button>
+  </div>
+
+  <div class="view active" id="view-list">
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <div class="view" id="view-map">
+    <div id="map"></div>
+    <div class="map-legend">
+      <div class="legend-item"><span class="legend-dot ink"></span> 408 Broadway (you)</div>
+      <div class="legend-item"><span class="legend-dot green"></span> $ Cheap eats</div>
+      <div class="legend-item"><span class="legend-dot gold"></span> $$ Mid-range</div>
+      <div class="legend-item"><span class="legend-dot accent"></span> $$$ High-end</div>
+      <div class="legend-item">Click pins to view on Google Maps · 0.75 mi circle = 15-min walk</div>
+    </div>
+  </div>
+
+  <footer>
+    <div>Lunch Atlas · 408 Broadway, NY 10013</div>
+    <div>Ratings sourced from Google · update as you discover new spots</div>
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js" integrity="sha512-BB3hKbKWOc9Ez/TAwyWxNXeoV9c1v6FIeYiBieIWkpLjauysF18NzgR1MBNBXf8/KABdlkX68nAhlwcDFLGPCQ==" crossorigin="anonymous"></script>
+<script>
+const RESTAURANTS = [
+  {n:1,name:"Jiang Nan NYC",cuisine:"Modern Chinese · Michelin-rec.",price:3,rating:4.8,hood:"chinatown",type:"restaurant",cats:["chinese","asian"],lat:40.7175581,lng:-73.9949693},
+  {n:2,name:"Uncle Lou",cuisine:"Cantonese · Dim Sum",price:2,rating:4.5,hood:"chinatown",type:"restaurant",cats:["chinese","asian","dimsum"],lat:40.7162246,lng:-73.9992347},
+  {n:3,name:"Shanghai 21",cuisine:"Shanghainese · Soup Dumplings",price:1,rating:4.5,hood:"chinatown",type:"restaurant",cats:["chinese","asian","dumplings"],lat:40.7144148,lng:-73.9989026},
+  {n:4,name:"Wo Hop",cuisine:"Cantonese · 1938 Basement",price:1,rating:4.4,hood:"chinatown",type:"restaurant",cats:["chinese","asian"],lat:40.7142762,lng:-73.998921},
+  {n:5,name:"Phoenix Palace",cuisine:"Modern Cantonese",price:3,rating:4.7,hood:"chinatown",type:"restaurant",cats:["chinese","asian"],lat:40.71682,lng:-73.99528},
+  {n:6,name:"Easy Joy Dim Sum & Hot Pot",cuisine:"Dim Sum · Hot Pot",price:2,rating:4.9,hood:"chinatown",type:"restaurant",cats:["chinese","asian","dimsum"],lat:40.718959,lng:-73.99774},
+  {n:7,name:"Chang Lai",cuisine:"HK Rice Rolls · Fish Balls",price:1,rating:4.9,hood:"chinatown",type:"restaurant",cats:["chinese","asian"],lat:40.7151801,lng:-73.9978715},
+  {n:8,name:"Dim Sum Palace",cuisine:"Dim Sum",price:2,rating:4.3,hood:"chinatown",type:"restaurant",cats:["chinese","asian","dimsum"],lat:40.7139743,lng:-73.996116},
+  {n:9,name:"Jin Mei Dumpling",cuisine:"Dumplings · Cash only",price:1,rating:4.7,hood:"chinatown",type:"restaurant",cats:["chinese","asian","dumplings"],lat:40.7129395,lng:-73.9965684},
+  {n:10,name:"Bao Noodle House",cuisine:"Northern Chinese · Noodles",price:1,rating:4.8,hood:"chinatown",type:"restaurant",cats:["chinese","asian","dumplings","noodles"],lat:40.7179918,lng:-73.99516},
+  {n:11,name:"Grandma's Dumpling House",cuisine:"Northern Dumplings",price:1,rating:4.8,hood:"chinatown",type:"restaurant",cats:["chinese","asian","dumplings"],lat:40.7149327,lng:-73.998238},
+  {n:12,name:"North Dumpling",cuisine:"Dumplings · Pancakes",price:1,rating:4.7,hood:"chinatown",type:"restaurant",cats:["chinese","asian","dumplings"],lat:40.7139521,lng:-73.9964406},
+  {n:13,name:"Shu Jiao Fu Zhou",cuisine:"Fuzhounese · Peanut Noodles",price:1,rating:4.6,hood:"chinatown",type:"restaurant",cats:["chinese","asian","dumplings","noodles"],lat:40.7174109,lng:-73.9920876},
+  {n:14,name:"Nha Trang One",cuisine:"Vietnamese · Pho",price:1,rating:4.4,hood:"chinatown",type:"restaurant",cats:["vietnamese","asian","noodles"],lat:40.7167652,lng:-73.9997046},
+  {n:15,name:"Thái Sơn",cuisine:"Vietnamese",price:1,rating:4.2,hood:"chinatown",type:"restaurant",cats:["vietnamese","asian","noodles"],lat:40.7168378,lng:-73.9996312},
+  {n:16,name:"Nam Sơn",cuisine:"Vietnamese",price:1,rating:4.1,hood:"chinatown",type:"restaurant",cats:["vietnamese","asian","noodles"],lat:40.7181278,lng:-73.9943694},
+  {n:17,name:"Lan Larb Chiang Mai",cuisine:"Northern Thai",price:2,rating:4.7,hood:"chinatown",type:"restaurant",cats:["thai","asian"],lat:40.71997,lng:-73.998567},
+  {n:18,name:"Zia Maria",cuisine:"Italian · Cheese-wheel Pasta",price:2,rating:4.6,hood:"nolita",type:"restaurant",cats:["italian","pasta"],lat:40.718711,lng:-73.997565},
+  {n:19,name:"Casa D'Angelo",cuisine:"Upscale Italian",price:2,rating:4.6,hood:"nolita",type:"restaurant",cats:["italian","pasta"],lat:40.7188063,lng:-73.9972296},
+  {n:20,name:"Da Gennaro",cuisine:"Classic Italian",price:2,rating:4.5,hood:"nolita",type:"restaurant",cats:["italian","pasta"],lat:40.7183616,lng:-73.997952},
+  {n:21,name:"Il Cortile",cuisine:"Family-owned Italian",price:2,rating:4.4,hood:"nolita",type:"restaurant",cats:["italian","pasta"],lat:40.7179835,lng:-73.9982316},
+  {n:22,name:"Sofia's of Little Italy",cuisine:"Italian · Pizza",price:2,rating:4.6,hood:"nolita",type:"restaurant",cats:["italian","pizza","pasta"],lat:40.7188684,lng:-73.9977175},
+  {n:23,name:"Osteria Barocca",cuisine:"Italian",price:2,rating:4.6,hood:"nolita",type:"restaurant",cats:["italian","pasta"],lat:40.7186467,lng:-73.997924},
+  {n:24,name:"Da Nico",cuisine:"Italian · Wood-fired Pizza",price:2,rating:4.3,hood:"nolita",type:"restaurant",cats:["italian","pizza"],lat:40.7196823,lng:-73.997064},
+  {n:25,name:"Jose Luis Little Italy",cuisine:"Italian",price:2,rating:4.6,hood:"nolita",type:"restaurant",cats:["italian","pasta"],lat:40.7176916,lng:-73.998406},
+  {n:26,name:"Rubirosa",cuisine:"Tie-dye Thin-crust Pizza",price:2,rating:4.6,hood:"nolita",type:"restaurant",cats:["italian","pizza"],lat:40.7227383,lng:-73.996135},
+  {n:27,name:"Emporio",cuisine:"Italian · Pizza",price:2,rating:4.5,hood:"nolita",type:"restaurant",cats:["italian","pizza","pasta"],lat:40.7226287,lng:-73.995291},
+  {n:28,name:"Boni and Mott",cuisine:"Mediterranean · Cocktails",price:2,rating:4.8,hood:"nolita",type:"restaurant",cats:["mediterranean"],lat:40.7226793,lng:-73.994938},
+  {n:29,name:"Café Mulberry",cuisine:"French Bistro",price:2,rating:4.8,hood:"nolita",type:"restaurant",cats:["french","brunch"],lat:40.722816,lng:-73.9958228},
+  {n:30,name:"Nolita Pizza",cuisine:"NY-style Slices",price:1,rating:4.8,hood:"nolita",type:"restaurant",cats:["pizza","italian"],lat:40.7208882,lng:-73.9962251},
+  {n:31,name:"Urban Backyard",cuisine:"Cafe · Coffee",price:1,rating:4.8,hood:"nolita",type:"restaurant",cats:["cafe","coffee","brunch"],lat:40.7208064,lng:-73.9966015},
+  {n:32,name:"Citizen of Soho",cuisine:"All-day Brunch",price:2,rating:4.8,hood:"nolita",type:"restaurant",cats:["brunch","american","cafe"],lat:40.7213636,lng:-73.997767},
+  {n:33,name:"Crispy Heaven",cuisine:"Bakery · Brunch",price:2,rating:4.7,hood:"nolita",type:"restaurant",cats:["bakery","brunch","cafe"],lat:40.7220837,lng:-73.997616},
+  {n:34,name:"Santo Taco",cuisine:"Mexican Tacos",price:2,rating:4.6,hood:"nolita",type:"restaurant",cats:["mexican","tacos"],lat:40.721412,lng:-73.9975948},
+  {n:35,name:"La Esquina Brasserie",cuisine:"Mexican · Hidden",price:2,rating:4.1,hood:"nolita",type:"restaurant",cats:["mexican","tacos"],lat:40.7213987,lng:-73.9975945},
+  {n:36,name:"LOS TACOS No.1",cuisine:"Mexican Tacos",price:1,rating:4.8,hood:"nolita",type:"restaurant",cats:["mexican","tacos"],lat:40.7262904,lng:-73.9945834},
+  {n:37,name:"Balthazar",cuisine:"French Brasserie · Institution",price:3,rating:4.4,hood:"soho",type:"restaurant",cats:["french","brunch"],lat:40.722668,lng:-73.998230},
+  {n:38,name:"La Pecora Bianca SoHo",cuisine:"Italian",price:2,rating:4.8,hood:"soho",type:"restaurant",cats:["italian","pasta"],lat:40.72346,lng:-73.9963118},
+  {n:39,name:"Boqueria SoHo",cuisine:"Spanish Tapas",price:2,rating:4.6,hood:"soho",type:"restaurant",cats:["spanish","mediterranean"],lat:40.7249228,lng:-74.0021554},
+  {n:40,name:"Shuka",cuisine:"Eastern Mediterranean",price:2,rating:4.6,hood:"soho",type:"restaurant",cats:["mediterranean"],lat:40.7270639,lng:-74.0027877},
+  {n:41,name:"The Dutch",cuisine:"New American",price:3,rating:4.3,hood:"soho",type:"restaurant",cats:["american"],lat:40.7265328,lng:-74.0021536},
+  {n:42,name:"Odd Sister",cuisine:"American · Brunch",price:2,rating:4.5,hood:"soho",type:"restaurant",cats:["american","brunch"],lat:40.7216611,lng:-74.0013444},
+  {n:43,name:"Momoya SoHo",cuisine:"Japanese · Sushi",price:3,rating:4.6,hood:"soho",type:"restaurant",cats:["japanese","sushi","asian"],lat:40.7235132,lng:-73.9958467},
+  {n:44,name:"Piccola Cucina",cuisine:"Sicilian Italian",price:2,rating:4.6,hood:"soho",type:"restaurant",cats:["italian","pasta"],lat:40.7250308,lng:-74.0032774},
+  {n:45,name:"Zutto Japanese",cuisine:"Ramen · Sushi",price:2,rating:4.6,hood:"soho",type:"restaurant",cats:["japanese","sushi","ramen","asian","noodles"],lat:40.7206081,lng:-73.9965332},
+  {n:46,name:"Sullivan Taqueria",cuisine:"Mexican Tacos",price:1,rating:4.6,hood:"soho",type:"restaurant",cats:["mexican","tacos"],lat:40.7244589,lng:-74.0038742},
+  {n:47,name:"LOKL Cafe SoHo",cuisine:"Cafe · Coffee",price:1,rating:4.8,hood:"soho",type:"restaurant",cats:["cafe","coffee"],lat:40.7227254,lng:-74.0042006},
+  {n:48,name:"Locanda Verde",cuisine:"Italian · De Niro's",price:3,rating:4.4,hood:"tribeca",type:"restaurant",cats:["italian","pasta","brunch"],lat:40.7198401,lng:-74.0099344},
+  {n:49,name:"Osteria Carlina",cuisine:"Piemontese Italian",price:3,rating:4.8,hood:"tribeca",type:"restaurant",cats:["italian","pasta"],lat:40.7195719,lng:-74.0070598},
+  {n:50,name:"Beefbar",cuisine:"Steakhouse",price:3,rating:4.6,hood:"tribeca",type:"restaurant",cats:["steakhouse","american"],lat:40.719584,lng:-74.0088579},
+  {n:51,name:"Maison Close",cuisine:"French",price:3,rating:4.8,hood:"tribeca",type:"restaurant",cats:["french","brunch"],lat:40.7232542,lng:-74.0037064},
+  {n:52,name:"Lindens",cuisine:"New American",price:2,rating:4.8,hood:"tribeca",type:"restaurant",cats:["american","brunch"],lat:40.7245348,lng:-74.0084684},
+  {n:53,name:"Bubby's",cuisine:"American Diner · Brunch",price:2,rating:4.4,hood:"tribeca",type:"restaurant",cats:["american","brunch","burgers"],lat:40.719819,lng:-74.0083829},
+  {n:54,name:"Paros Tribeca",cuisine:"Greek · Mediterranean",price:3,rating:4.6,hood:"tribeca",type:"restaurant",cats:["greek","mediterranean"],lat:40.7189138,lng:-74.0062106},
+  {n:55,name:"Marc179",cuisine:"Chef-driven Pop-up",price:3,rating:4.9,hood:"tribeca",type:"restaurant",cats:["american"],lat:40.717924,lng:-74.0070881},
+  {n:56,name:"Chambers",cuisine:"New American · Wine Bar",price:3,rating:4.7,hood:"tribeca",type:"restaurant",cats:["american"],lat:40.7145903,lng:-74.0075468},
+  {n:57,name:"Tataki",cuisine:"Japanese · Sushi",price:2,rating:4.5,hood:"tribeca",type:"restaurant",cats:["japanese","sushi","asian"],lat:40.7206687,lng:-74.0048742},
+  {n:58,name:"Takahachi",cuisine:"Japanese · Sushi",price:2,rating:4.5,hood:"tribeca",type:"restaurant",cats:["japanese","sushi","asian"],lat:40.716584,lng:-74.0079215},
+  {n:59,name:"Casa Carmen Tribeca",cuisine:"Mexican",price:2,rating:4.5,hood:"tribeca",type:"restaurant",cats:["mexican","tacos"],lat:40.7188537,lng:-74.0059424},
+  {n:60,name:"Serafina Tribeca",cuisine:"Italian · Pizza",price:2,rating:4.4,hood:"tribeca",type:"restaurant",cats:["italian","pizza","pasta"],lat:40.7155048,lng:-74.0089451},
+  {n:61,name:"Artesano",cuisine:"Modern Peruvian",price:2,rating:4.6,hood:"tribeca",type:"restaurant",cats:["peruvian","latin"],lat:40.7144772,lng:-74.0074369},
+  {n:62,name:"1803 NYC",cuisine:"Cajun · Creole",price:2,rating:4.5,hood:"tribeca",type:"restaurant",cats:["cajun","american"],lat:40.7154539,lng:-74.0073301},
+  {n:63,name:"Chipotle (404 Broadway)",cuisine:"Mexican Bowls · Next door",price:1,rating:3.7,hood:"chinatown",type:"quick",cats:["mexican","bowls","burritos"],lat:40.7187625,lng:-74.0021132},
+  {n:64,name:"Halal Cart (416 Broadway)",cuisine:"Chicken Over Rice · On block",price:1,rating:3.8,hood:"chinatown",type:"quick",cats:["halal","middleeastern","bowls"],lat:40.7192236,lng:-74.0018993},
+  {n:65,name:"CAVA",cuisine:"Mediterranean Bowls",price:2,rating:4.4,hood:"nolita",type:"quick",cats:["mediterranean","bowls","greek"],lat:40.7219279,lng:-73.9965119},
+  {n:66,name:"Sweetgreen (Kenmare)",cuisine:"Salads · Grain Bowls",price:2,rating:4.1,hood:"nolita",type:"quick",cats:["salads","bowls","healthy"],lat:40.7211844,lng:-73.9971105},
+  {n:67,name:"Just Salad (Lafayette)",cuisine:"Salads · Warm Bowls",price:2,rating:4.9,hood:"nolita",type:"quick",cats:["salads","bowls","healthy"],lat:40.7211874,lng:-73.9978343},
+  {n:68,name:"Dig Inn",cuisine:"Seasonal Market Bowls",price:1,rating:4.5,hood:"soho",type:"quick",cats:["bowls","healthy","american"],lat:40.7237559,lng:-73.9969362},
+  {n:69,name:"Poke Bowl NY",cuisine:"Hawaiian Poke",price:1,rating:4.4,hood:"chinatown",type:"quick",cats:["poke","bowls","asian","healthy"],lat:40.7214322,lng:-74.0050113},
+  {n:70,name:"Soho Halal Guy Cart",cuisine:"Halal Chicken & Lamb",price:1,rating:4.0,hood:"soho",type:"quick",cats:["halal","middleeastern","bowls"],lat:40.7253813,lng:-73.9971712},
+  {n:71,name:"Sweetgreen (Chambers)",cuisine:"Salads · Grain Bowls",price:2,rating:3.9,hood:"tribeca",type:"quick",cats:["salads","bowls","healthy"],lat:40.7154632,lng:-74.0088361},
+  {n:72,name:"Just Salad (Chambers)",cuisine:"Salads · Warm Bowls",price:2,rating:4.5,hood:"tribeca",type:"quick",cats:["salads","bowls","healthy"],lat:40.7126361,lng:-74.0080994},
+  {n:73,name:"Chipotle (Spring St)",cuisine:"Mexican Bowls",price:1,rating:3.4,hood:"soho",type:"quick",cats:["mexican","bowls","burritos"],lat:40.7226695,lng:-73.9975231},
+  {n:74,name:"McDonald's (Canal St)",cuisine:"Burgers · 2-min walk",price:1,rating:3.3,hood:"chinatown",type:"fastfood",cats:["burgers","american","fastfood"],lat:40.7186149,lng:-74.0010687},
+  {n:75,name:"Popeyes (Walker St)",cuisine:"Fried Chicken",price:1,rating:4.0,hood:"chinatown",type:"fastfood",cats:["chicken","american","fastfood"],lat:40.7180048,lng:-74.0006269},
+  {n:76,name:"Dunkin' (336 Broadway)",cuisine:"Coffee · Donuts",price:1,rating:3.9,hood:"chinatown",type:"fastfood",cats:["coffee","cafe","fastfood","bakery"],lat:40.7164196,lng:-74.0041448},
+  {n:77,name:"Pret A Manger (319 Broadway)",cuisine:"Sandwiches · Salads",price:2,rating:4.2,hood:"tribeca",type:"fastfood",cats:["sandwiches","salads","cafe","fastfood"],lat:40.715866,lng:-74.005053},
+  {n:78,name:"Subway (Worth St)",cuisine:"Subs",price:1,rating:3.7,hood:"tribeca",type:"fastfood",cats:["sandwiches","fastfood"],lat:40.7164174,lng:-74.0050314},
+  {n:79,name:"Joe & The Juice (Spring St)",cuisine:"Juices · Sandwiches",price:2,rating:4.0,hood:"nolita",type:"fastfood",cats:["sandwiches","juice","cafe","healthy"],lat:40.7226266,lng:-73.9973908},
+  {n:80,name:"$1.50 Fresh Pizza (Canal)",cuisine:"NY Slice · Beloved",price:1,rating:4.5,hood:"chinatown",type:"fastfood",cats:["pizza","italian","fastfood"],lat:40.7216037,lng:-74.0047136},
+  {n:81,name:"Domino's (Catherine St)",cuisine:"Pizza",price:1,rating:3.6,hood:"chinatown",type:"fastfood",cats:["pizza","fastfood"],lat:40.7119451,lng:-73.9966267},
+  {n:82,name:"McDonald's (Chambers)",cuisine:"Burgers",price:1,rating:3.3,hood:"tribeca",type:"fastfood",cats:["burgers","american","fastfood"],lat:40.7163331,lng:-74.0106317},
+  {n:83,name:"Subway (Church St)",cuisine:"Subs",price:1,rating:3.1,hood:"tribeca",type:"fastfood",cats:["sandwiches","fastfood"],lat:40.7150449,lng:-74.0075788},
+];
+
+const CATEGORY_LABELS = {
+  italian:"Italian", pasta:"Pasta", pizza:"Pizza",
+  chinese:"Chinese", asian:"Asian", dimsum:"Dim Sum", dumplings:"Dumplings", noodles:"Noodles",
+  japanese:"Japanese", sushi:"Sushi", ramen:"Ramen",
+  thai:"Thai", vietnamese:"Vietnamese",
+  mexican:"Mexican", tacos:"Tacos", burritos:"Burritos",
+  mediterranean:"Mediterranean", greek:"Greek", spanish:"Spanish", french:"French",
+  american:"American", burgers:"Burgers", chicken:"Chicken", steakhouse:"Steakhouse", cajun:"Cajun",
+  middleeastern:"Middle Eastern", halal:"Halal",
+  peruvian:"Peruvian", latin:"Latin",
+  brunch:"Brunch", cafe:"Cafe", coffee:"Coffee", bakery:"Bakery",
+  salads:"Salads", bowls:"Bowls", healthy:"Healthy", poke:"Poke", juice:"Juice",
+  sandwiches:"Sandwiches", fastfood:"Fast Food",
+};
+
+const filters = { search:'', type:'all', price:'all', hood:'all', sort:'rating', cat:'all' };
+let currentView = 'list';
+let map = null, markerLayer = null;
+
+const priceLabel = p => '$'.repeat(p);
+const hoodLabel = { chinatown:'Chinatown', nolita:'Nolita', soho:'SoHo', tribeca:'Tribeca' };
+const typeLabel = { restaurant:'', quick:'Bowl / Takeout', fastfood:'Fast Food' };
+
+function mapsUrl(r) {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(r.name + ', New York, NY')}`;
+}
+
+function applyFilters() {
+  let list = RESTAURANTS.filter(r => {
+    if (filters.type !== 'all' && r.type !== filters.type) return false;
+    if (filters.price !== 'all' && r.price !== parseInt(filters.price)) return false;
+    if (filters.hood !== 'all' && r.hood !== filters.hood) return false;
+    if (filters.cat !== 'all' && !r.cats.includes(filters.cat)) return false;
+    if (filters.search) {
+      const q = filters.search.toLowerCase();
+      const haystack = (r.name + ' ' + r.cuisine + ' ' + r.cats.map(c => CATEGORY_LABELS[c] || c).join(' ')).toLowerCase();
+      if (!haystack.includes(q)) return false;
+    }
+    return true;
+  });
+  if (filters.sort === 'rating') list.sort((a, b) => b.rating - a.rating);
+  else list.sort((a, b) => a.n - b.n);
+  return list;
+}
+
+function renderList(list) {
+  const grid = document.getElementById('grid');
+  if (list.length === 0) {
+    grid.innerHTML = '<div class="empty"><p>Nothing matches.</p><p>Try clearing a filter.</p></div>';
+    return;
+  }
+  grid.innerHTML = list.map((r, i) => {
+    const typeTag = r.type !== 'restaurant'
+      ? `<span class="tag tag-type-${r.type === 'quick' ? 'quick' : 'fastfood'}">${typeLabel[r.type]}</span>`
+      : '';
+    return `
+      <a class="card" href="${mapsUrl(r)}" target="_blank" rel="noopener noreferrer" style="animation-delay:${Math.min(i * 0.015, 0.4)}s">
+        <div class="card-num">№ ${String(r.n).padStart(2, '0')}</div>
+        <div class="card-arrow">↗</div>
+        <h3>${r.name}</h3>
+        <p class="cuisine">${r.cuisine}</p>
+        <div class="card-tags">
+          <span class="tag tag-rating">★ ${r.rating.toFixed(1)}</span>
+          <span class="tag tag-price-${r.price}">${priceLabel(r.price)}</span>
+          <span class="tag tag-hood-${r.hood}">${hoodLabel[r.hood]}</span>
+          ${typeTag}
+        </div>
+      </a>
+    `;
+  }).join('');
+}
+
+function renderMap(list) {
+  if (!map) return;
+  if (markerLayer) markerLayer.clearLayers();
+  markerLayer = L.layerGroup().addTo(map);
+  list.forEach(r => {
+    const icon = L.divIcon({
+      className: '',
+      html: `<div class="custom-marker marker-${r.price}">${r.n}</div>`,
+      iconSize: [32, 32],
+      iconAnchor: [16, 16],
+    });
+    const popupHtml = `
+      <h4>${r.name}</h4>
+      <div class="popup-cuisine">${r.cuisine}</div>
+      <div class="popup-meta">★ ${r.rating.toFixed(1)} · ${priceLabel(r.price)} · ${hoodLabel[r.hood]}</div>
+      <a href="${mapsUrl(r)}" target="_blank" rel="noopener noreferrer">View on Google Maps ↗</a>
+    `;
+    L.marker([r.lat, r.lng], { icon }).bindPopup(popupHtml).addTo(markerLayer);
+  });
+}
+
+function render() {
+  const list = applyFilters();
+  document.getElementById('count').textContent = list.length;
+  document.getElementById('list-count').textContent = list.length;
+  renderList(list);
+  if (currentView === 'map') renderMap(list);
+}
+
+function buildCategoryChips() {
+  const counts = {};
+  RESTAURANTS.forEach(r => r.cats.forEach(c => counts[c] = (counts[c] || 0) + 1));
+  const order = ['pizza','italian','pasta','chinese','dumplings','dimsum','noodles','japanese','sushi','ramen','thai','vietnamese','asian','mexican','tacos','burritos','mediterranean','greek','spanish','french','american','burgers','chicken','steakhouse','halal','middleeastern','peruvian','latin','cajun','brunch','cafe','coffee','bakery','salads','bowls','healthy','poke','juice','sandwiches','fastfood'];
+  const cats = order.filter(c => counts[c]);
+  const chips = document.getElementById('category-chips');
+  chips.innerHTML = `<button class="chip active" data-cat="all">All <span class="chip-count">${RESTAURANTS.length}</span></button>` +
+    cats.map(c => `<button class="chip" data-cat="${c}">${CATEGORY_LABELS[c] || c} <span class="chip-count">${counts[c]}</span></button>`).join('');
+  chips.addEventListener('click', e => {
+    const btn = e.target.closest('.chip');
+    if (!btn) return;
+    chips.querySelectorAll('.chip').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    filters.cat = btn.dataset.cat;
+    render();
+  });
+}
+
+function initMap() {
+  if (map) return;
+  const office = [40.7191, -74.0019];
+  map = L.map('map', { scrollWheelZoom: false }).setView(office, 15);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap', maxZoom: 19,
+  }).addTo(map);
+  L.circle(office, {
+    radius: 1207, color: '#b8442a', weight: 1.5, opacity: 0.6,
+    fillColor: '#b8442a', fillOpacity: 0.05, dashArray: '6 4',
+  }).addTo(map);
+  const officeIcon = L.divIcon({
+    className: '',
+    html: '<div class="custom-marker marker-home">★</div>',
+    iconSize: [40, 40], iconAnchor: [20, 20],
+  });
+  L.marker(office, { icon: officeIcon })
+    .bindPopup('<h4>408 Broadway</h4><div class="popup-cuisine">You are here</div>')
+    .addTo(map);
+}
+
+document.getElementById('view-tabs').addEventListener('click', e => {
+  const btn = e.target.closest('.view-tab');
+  if (!btn) return;
+  document.querySelectorAll('.view-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentView = btn.dataset.view;
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + currentView).classList.add('active');
+  if (currentView === 'map') {
+    initMap();
+    setTimeout(() => { map.invalidateSize(); renderMap(applyFilters()); }, 100);
+  }
+});
+
+document.querySelectorAll('.filter-group').forEach(group => {
+  const key = group.dataset.filter;
+  group.addEventListener('click', e => {
+    if (e.target.tagName !== 'BUTTON') return;
+    group.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+    e.target.classList.add('active');
+    filters[key] = e.target.dataset.value;
+    render();
+  });
+});
+
+document.getElementById('search').addEventListener('input', e => {
+  filters.search = e.target.value;
+  render();
+});
+
+document.getElementById('clear').addEventListener('click', () => {
+  filters.search = ''; filters.type = 'all'; filters.price = 'all';
+  filters.hood = 'all'; filters.sort = 'rating'; filters.cat = 'all';
+  document.getElementById('search').value = '';
+  document.querySelectorAll('.filter-group').forEach(group => {
+    group.querySelectorAll('button').forEach((b, i) => b.classList.toggle('active', i === 0));
+  });
+  document.querySelectorAll('.chip').forEach((b, i) => b.classList.toggle('active', i === 0));
+  render();
+});
+
+buildCategoryChips();
+render();
+</script>
+</body>
+</html>
